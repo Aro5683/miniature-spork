@@ -196,7 +196,7 @@ return;
 }
 
 const codes=await fetch(
-"https://raw.githubusercontent.com/Aro5683/bedwarrior/main/codes.json?nocache="+Date.now()
+"https://raw.githubusercontent.com/Aro5683/miniature-spork/main/codes.json?nocache="+Date.now()
 ).then(r=>r.json());
 
 const found=codes.find(c=>c.code===json.code);
