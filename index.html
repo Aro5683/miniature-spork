@@ -24,6 +24,15 @@ padding:25px;
 border-radius:20px;
 margin-top:30px;
 }
+select, input{
+width:100%;
+padding:10px;
+margin-top:10px;
+border-radius:8px;
+border:none;
+background:#111827;
+color:#fff;
+}
 button{
 padding:12px;
 border:none;
@@ -34,39 +43,46 @@ cursor:pointer;
 width:100%;
 margin-top:10px;
 }
-input{
-width:100%;
-padding:10px;
-margin-top:10px;
-border-radius:8px;
-border:none;
-background:#111827;
-color:#fff;
-}
 #viewer img{
 width:100%;
 margin-bottom:20px;
 }
+.success{color:#22c55e;}
+.error{color:#ef4444;}
+.notice{color:#38bdf8;margin-top:10px;}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-<h1>Premium B.Ed <span>Study Materials</span></h1>
+<h1>Premium B.Ed <span>Study Library</span></h1>
 
+<!-- DOWNLOAD SECTION -->
 <div class="card">
 <h3>Download Book</h3>
+
+<select id="bookSelect">
+<option value="">Select Book</option>
+<option value="notes.bedx">B.Ed Notes</option>
+<option value="circulars.bedx">Circulars</option>
+<option value="modelpapers.bedx">Model Question Papers</option>
+</select>
+
 <input type="text" id="name" placeholder="Full Name">
 <input type="text" id="phone" placeholder="Phone">
-<button onclick="downloadFile()">Download</button>
+
+<button onclick="downloadBook()">Download</button>
+
 <p id="codeDisplay"></p>
+<p id="offlineMessage" class="notice"></p>
 </div>
 
+<!-- OPEN SECTION -->
 <div class="card">
-<h3>Open Purchased File</h3>
-<input type="file" id="fileInput">
-<button onclick="openFile()">Open Book</button>
+<h3>Open Downloaded Book</h3>
+<input type="file" id="fileInput" accept=".bedx,application/octet-stream,*/*">
+<button onclick="openBook()">Open Book</button>
 <p id="status"></p>
 <div id="viewer"></div>
 </div>
@@ -88,19 +104,34 @@ let c="";for(let i=0;i<16;i++){c+=Math.floor(Math.random()*10);}return c;
 }
 
 function getDeviceID(){
-return btoa(navigator.userAgent+screen.width);
+return btoa(
+navigator.userAgent+
+screen.width+
+screen.height+
+navigator.platform
+);
 }
 
-async function downloadFile(){
+async function downloadBook(){
+
+const book=document.getElementById("bookSelect").value;
 const name=document.getElementById("name").value;
 const phone=document.getElementById("phone").value;
-if(!name||!phone){alert("Enter details");return;}
+
+if(!book||!name||!phone){
+alert("Fill all details");
+return;
+}
 
 const code=generateCode();
+
 document.getElementById("codeDisplay").innerHTML=
 "Your Code: <b>"+code+"</b><br>Send this after payment.";
 
-const master=await fetch("master.bedx").then(r=>r.text());
+document.getElementById("offlineMessage").innerText=
+"After approval, you can turn off internet and use offline.";
+
+const master=await fetch("masters/"+book).then(r=>r.text());
 const m=JSON.parse(master);
 
 const fileData={
@@ -109,17 +140,22 @@ data:m.data,
 code,
 deviceID:getDeviceID(),
 name,
-phone
+phone,
+book
 };
 
-const blob=new Blob([JSON.stringify(fileData)]);
+const blob=new Blob(
+[JSON.stringify(fileData)],
+{type:"application/octet-stream"}
+);
+
 const a=document.createElement("a");
 a.href=URL.createObjectURL(blob);
-a.download="BEd_"+code+".bedx";
+a.download="BEd_"+book+"_"+code+".bedx";
 a.click();
 }
 
-async function openFile(){
+async function openBook(){
 
 const status=document.getElementById("status");
 status.innerText="";
@@ -130,7 +166,8 @@ if(!file){status.innerText="Select file";return;}
 const json=JSON.parse(await file.text());
 
 if(json.deviceID!==getDeviceID()){
-status.innerText="Not this device";
+status.className="error";
+status.innerText="This file is not for this device.";
 return;
 }
 
@@ -152,9 +189,13 @@ localStorage.setItem("approved_"+json.code,true);
 }
 
 if(!approved){
-status.innerText="Payment not approved";
+status.className="error";
+status.innerText="Payment not approved yet.";
 return;
 }
+
+status.className="success";
+status.innerText="Hii "+json.name+", your "+json.book+" is verified and opened successfully.";
 
 const key=await crypto.subtle.importKey(
 "raw",
@@ -167,10 +208,10 @@ const decrypted=await crypto.subtle.decrypt(
 key,
 new Uint8Array(json.data));
 
-renderPDF(new Uint8Array(decrypted),json);
+renderPDF(new Uint8Array(decrypted));
 }
 
-async function renderPDF(data,json){
+async function renderPDF(data){
 
 const viewer=document.getElementById("viewer");
 viewer.innerHTML="";
@@ -189,7 +230,6 @@ const img=document.createElement("img");
 img.src=canvas.toDataURL();
 viewer.appendChild(img);
 }
-
 }
 </script>
 
