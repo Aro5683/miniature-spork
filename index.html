@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EduWarrior Premium</title>
+
+<style>
+body{
+margin:0;
+font-family:'Segoe UI',sans-serif;
+background:radial-gradient(circle at top,#0f172a,#020617);
+color:#fff;
+}
+.container{max-width:1100px;margin:auto;padding:40px;text-align:center;}
+h1{font-size:40px;}
+h1 span{color:#f59e0b;}
+.pricing{display:flex;flex-wrap:wrap;justify-content:center;gap:25px;margin-top:30px;}
+.card{
+background:rgba(255,255,255,.05);
+padding:25px;
+border-radius:20px;
+width:250px;
+transition:.3s;
+}
+.card:hover{transform:translateY(-6px);}
+.price{font-size:32px;color:#f59e0b;margin:15px 0;}
+button{
+width:100%;
+padding:12px;
+margin-top:10px;
+border:none;
+border-radius:10px;
+font-weight:bold;
+cursor:pointer;
+}
+.gold{background:linear-gradient(90deg,#f59e0b,#fbbf24);color:#000;}
+.green{background:#16a34a;color:#fff;}
+.blue{background:#2563eb;color:#fff;}
+input{
+width:100%;
+padding:10px;
+margin:6px 0;
+border-radius:8px;
+border:none;
+background:#111827;
+color:#fff;
+}
+.section{
+margin-top:50px;
+max-width:500px;
+margin-left:auto;
+margin-right:auto;
+background:rgba(255,255,255,.05);
+padding:20px;
+border-radius:15px;
+}
+.alert{color:#ff6b6b;margin-top:10px;}
+iframe{width:100%;height:600px;margin-top:20px;border:none;}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Premium B.Ed <span>Study Packages</span></h1>
+
+<div class="pricing">
+<div class="card">
+<h3>Basic</h3>
+<div class="price">₹129</div>
+<button class="gold" onclick="selectPackage(129)">Select</button>
+</div>
+
+<div class="card">
+<h3>Standard</h3>
+<div class="price">₹139</div>
+<button class="gold" onclick="selectPackage(139)">Select</button>
+</div>
+
+<div class="card">
+<h3>Premium</h3>
+<div class="price">₹149</div>
+<button class="gold" onclick="selectPackage(149)">Select</button>
+</div>
+
+<div class="card">
+<h3>Ultimate</h3>
+<div class="price">₹159</div>
+<button class="gold" onclick="selectPackage(159)">Select</button>
+</div>
+</div>
+
+<div class="section">
+
+<h3>Purchase</h3>
+<input type="text" id="name" placeholder="Full Name">
+<input type="text" id="phone" placeholder="Phone Number">
+<p id="selected"></p>
+
+<button class="green" onclick="payUPI()">Pay via UPI</button>
+<button class="blue" onclick="sendWhatsApp()">Send in WhatsApp</button>
+<button class="gold" onclick="downloadBedx()">Download .bedx</button>
+
+<hr>
+
+<h3>Open Book</h3>
+<input type="file" id="openFile">
+<button class="gold" onclick="openBook()">Open</button>
+<div id="alert" class="alert"></div>
+
+<div id="viewer"></div>
+
+</div>
+</div>
+
+<script>
+const MASTER_SECRET="BED_SECRET_2025_PRIVATE";
+let selectedAmount=0;
+let code="";
+
+function selectPackage(amount){
+selectedAmount=amount;
+document.getElementById("selected").innerText="Selected ₹"+amount;
+}
+
+function generateCode(){
+let c="";
+for(let i=0;i<16;i++){c+=Math.floor(Math.random()*10);}
+return c;
+}
+
+function payUPI(){
+if(!selectedAmount){alert("Select package");return;}
+window.location.href="upi://pay?pa=9629981854@paytm&pn=EduWarrior&am="+selectedAmount+"&cu=INR";
+}
+
+function sendWhatsApp(){
+const name=document.getElementById("name").value;
+const phone=document.getElementById("phone").value;
+if(!name||!phone||!selectedAmount){alert("Fill details");return;}
+if(!code) code=generateCode();
+window.open(
+"https://wa.me/91YOURNUMBER?text="+encodeURIComponent(
+`Name:${name}\nPhone:${phone}\nAmount:₹${selectedAmount}\nCode:${code}`),
+"_blank");
+}
+
+async function downloadBedx(){
+if(!code){alert("Click WhatsApp first");return;}
+
+const deviceID=btoa(navigator.userAgent+screen.width);
+
+const master=await fetch("master.bedx").then(r=>r.text());
+const m=JSON.parse(master);
+
+const key=await crypto.subtle.importKey(
+"raw",
+await crypto.subtle.digest("SHA-256",
+new TextEncoder().encode(code+deviceID)),
+{name:"AES-GCM"},false,["encrypt"]);
+
+const iv=crypto.getRandomValues(new Uint8Array(12));
+
+const encrypted=await crypto.subtle.encrypt(
+{name:"AES-GCM",iv},
+key,
+new Uint8Array(m.data));
+
+const fileData={
+iv:Array.from(iv),
+data:Array.from(new Uint8Array(encrypted)),
+code,
+deviceID
+};
+
+const blob=new Blob([JSON.stringify(fileData)]);
+const a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="BEd_"+code+".bedx";
+a.click();
+}
+
+async function openBook(){
+const alertBox=document.getElementById("alert");
+alertBox.innerText="";
+const file=document.getElementById("openFile").files[0];
+if(!file){alertBox.innerText="Select file";return;}
+
+const json=JSON.parse(await file.text());
+const deviceID=btoa(navigator.userAgent+screen.width);
+
+if(json.deviceID!==deviceID){
+alertBox.innerText="Not this device";
+return;
+}
+
+const codes=await fetch(
+"https://raw.githubusercontent.com/Aro5683/bedwarrior/main/codes.json?nocache="+Date.now()
+).then(r=>r.json());
+
+const found=codes.find(c=>c.code===json.code);
+
+if(!found||!found.approved){
+alertBox.innerText="Payment not approved";
+return;
+}
+
+const key=await crypto.subtle.importKey(
+"raw",
+await crypto.subtle.digest("SHA-256",
+new TextEncoder().encode(json.code+json.deviceID)),
+{name:"AES-GCM"},false,["decrypt"]);
+
+try{
+const decrypted=await crypto.subtle.decrypt(
+{name:"AES-GCM",iv:new Uint8Array(json.iv)},
+key,
+new Uint8Array(json.data));
+
+const blob=new Blob([decrypted],{type:"application/pdf"});
+document.getElementById("viewer").innerHTML=
+`<iframe src="${URL.createObjectURL(blob)}"></iframe>`;
+}catch{
+alertBox.innerText="Cannot open";
+}
+}
+</script>
+
+</body>
+</html>
