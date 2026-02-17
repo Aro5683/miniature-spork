@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html>
 <body>
-<h2>Create Master BEDX</h2>
-<input type="file" id="pdfFile">
-<button onclick="create()">Create</button>
+<h2>Create master.bedx</h2>
+<input type="file" id="pdf">
+<button onclick="create()">Encrypt</button>
 
 <script>
 const MASTER_SECRET="BED_SECRET_2025_PRIVATE";
 
 async function create(){
-const file=document.getElementById("pdfFile").files[0];
+const file=document.getElementById("pdf").files[0];
 if(!file){alert("Upload PDF");return;}
 
 const pdf=await file.arrayBuffer();
@@ -18,25 +18,21 @@ const key=await crypto.subtle.importKey(
 "raw",
 await crypto.subtle.digest("SHA-256",
 new TextEncoder().encode(MASTER_SECRET)),
-{name:"AES-GCM"},
-false,
-["encrypt"]
-);
+{name:"AES-GCM"},false,["encrypt"]);
 
 const iv=crypto.getRandomValues(new Uint8Array(12));
 
 const encrypted=await crypto.subtle.encrypt(
 {name:"AES-GCM",iv},
 key,
-pdf
-);
+pdf);
 
-const bedx={
+const data={
 iv:Array.from(iv),
 data:Array.from(new Uint8Array(encrypted))
 };
 
-const blob=new Blob([JSON.stringify(bedx)]);
+const blob=new Blob([JSON.stringify(data)]);
 const a=document.createElement("a");
 a.href=URL.createObjectURL(blob);
 a.download="master.bedx";
