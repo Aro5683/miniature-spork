@@ -1,4 +1,4 @@
-const CACHE_NAME="edu-cache-v1"; // increase version when updating
+const CACHE_NAME="edu-cache-v4"; // increase version when updating
 
 self.addEventListener("install",event=>{
 event.waitUntil(
