@@ -1,42 +1,50 @@
 <!DOCTYPE html>
 <html>
 <body>
-<h2>Create master.bedx</h2>
-<input type="file" id="pdf">
-<button onclick="create()">Encrypt</button>
+<h2>Encrypt PDF for Offline Viewer</h2>
+<input type="file" id="pdfFile">
+<button onclick="encryptPDF()">Encrypt</button>
+
+<textarea id="output" style="width:100%;height:200px;margin-top:20px;"></textarea>
 
 <script>
-const MASTER_SECRET="BED_SECRET_2025_PRIVATE";
+const SECRET_KEY = "MY_PRIVATE_SECRET_2025";
 
-async function create(){
-const file=document.getElementById("pdf").files[0];
-if(!file){alert("Upload PDF");return;}
+async function encryptPDF(){
 
-const pdf=await file.arrayBuffer();
+  const file = document.getElementById("pdfFile").files[0];
+  if(!file){ alert("Upload PDF"); return; }
 
-const key=await crypto.subtle.importKey(
-"raw",
-await crypto.subtle.digest("SHA-256",
-new TextEncoder().encode(MASTER_SECRET)),
-{name:"AES-GCM"},false,["encrypt"]);
+  const pdfBuffer = await file.arrayBuffer();
 
-const iv=crypto.getRandomValues(new Uint8Array(12));
+  const keyMaterial = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(SECRET_KEY)
+  );
 
-const encrypted=await crypto.subtle.encrypt(
-{name:"AES-GCM",iv},
-key,
-pdf);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    {name:"AES-GCM"},
+    false,
+    ["encrypt"]
+  );
 
-const data={
-iv:Array.from(iv),
-data:Array.from(new Uint8Array(encrypted))
-};
+  const iv = crypto.getRandomValues(new Uint8Array(12));
 
-const blob=new Blob([JSON.stringify(data)]);
-const a=document.createElement("a");
-a.href=URL.createObjectURL(blob);
-a.download="master.bedx";
-a.click();
+  const encrypted = await crypto.subtle.encrypt(
+    {name:"AES-GCM",iv},
+    key,
+    pdfBuffer
+  );
+
+  const combined = new Uint8Array(iv.length + encrypted.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(encrypted), iv.length);
+
+  const base64 = btoa(String.fromCharCode(...combined));
+
+  document.getElementById("output").value = base64;
 }
 </script>
 </body>
