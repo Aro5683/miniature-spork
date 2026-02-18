@@ -221,6 +221,11 @@ img.src=canvas.toDataURL();
 viewer.appendChild(img);
 }
 }
+
+  navigator.serviceWorker.addEventListener("controllerchange", function() {
+  alert("New version installed. Please refresh.");
+});
+
 </script>
 
 </body>
